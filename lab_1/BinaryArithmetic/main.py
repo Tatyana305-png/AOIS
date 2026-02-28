@@ -118,9 +118,9 @@ class BinaryArithmeticLab:
         self.run_task6(f1, f2)
         self.run_task7(bcd1, bcd2)
 
-        self.printer.print_section("ВСЕ ЗАДАНИЯ ВЫПОЛНЕНЫ")
 
 
 if __name__ == "__main__":
     lab = BinaryArithmeticLab()
+
     lab.run_all()
