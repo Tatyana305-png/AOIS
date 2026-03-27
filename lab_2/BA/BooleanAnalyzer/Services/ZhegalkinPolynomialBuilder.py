@@ -1,61 +1,76 @@
-from typing import List
+from typing import List, Tuple
 from ..Models.BooleanFunction import BooleanFunction
 
 
 class ZhegalkinPolynomialBuilder:
-    """Построитель полинома Жегалкина"""
+    """Построитель полинома Жегалкина методом треугольника (как в оригинальном коде)"""
 
     def build(self, function: BooleanFunction) -> str:
-        """Построение полинома методом треугольника"""
-        if len(function.variables) == 0:
-            if function.expression == '0':
-                return '0'
-            else:
-                return '1'
+        """Построение полинома Жегалкина"""
+        vector = function.truth_table.get_result_column()
 
-        results = function.truth_table.get_result_column()
-        n = len(function.variables)
+        coefficients = self._compute_coefficients(vector, len(function.variables))
 
-        coeffs = results.copy()
-        step = 1
-        while step < len(coeffs):
-            for i in range(len(coeffs) - step):
-                coeffs[i] = coeffs[i] ^ coeffs[i + step]
-            step *= 2
+        monomials = []
+        for mask, coeff in enumerate(coefficients):
+            if coeff == 1:
+                monomial = self._mask_to_monomial(mask, function.variables)
+                if monomial:
+                    monomials.append(monomial)
 
-        terms = self._coeffs_to_terms(coeffs, function.variables)
-
-        if not terms:
+        if not monomials:
             return '0'
 
-        def sort_key(term):
-            if term == '1':
-                return (0, term)
-            elif len(term) == 1 and term in 'abcde':
-                return (1, term)
+        def sort_key(monom):
+            if monom == '1':
+                return (0, monom)
+            elif len(monom) == 1 and monom in 'abcde':
+                return (1, monom)
             else:
-                return (2, term)
+                return (2, monom)
 
-        terms.sort(key=sort_key)
-        return ' ⊕ '.join(terms)
+        monomials.sort(key=sort_key)
+        return ' ⊕ '.join(monomials)
 
-    def _coeffs_to_terms(self, coeffs: List[int], variables: List[str]) -> List[str]:
-        """Преобразование коэффициентов в термы"""
-        terms = []
+    def _compute_coefficients(self, vector: List[int], dimension: int) -> List[int]:
+        """
+        Вычисление коэффициентов полинома Жегалкина методом треугольника.
+        Алгоритм из оригинального кода.
+        """
+        coefficients = vector.copy()
+
+        for bit in range(dimension):
+            bit_mask = 1 << bit
+            for mask in range(1 << dimension):
+                if mask & bit_mask:
+                    coefficients[mask] ^= coefficients[mask ^ bit_mask]
+
+        return coefficients
+
+    def _mask_to_monomial(self, mask: int, variables: List[str]) -> str:
+        """
+        Преобразование маски в моном.
+        mask=0 -> "1"
+        mask=1 (001) -> "a" (если a - младший бит)
+        mask=2 (010) -> "b"
+        mask=4 (100) -> "c"
+        mask=3 (011) -> "a&b"
+        и т.д.
+        """
+        if mask == 0:
+            return "1"
+
+        parts = []
         n = len(variables)
 
-        for i, coeff in enumerate(coeffs):
-            if coeff == 1:
-                if i == 0:
-                    terms.append('1')
-                else:
-                    bits = format(i, f'0{n}b')[::-1]
-                    term_vars = [var for var, bit in zip(variables, bits) if bit == '1']
-                    if len(term_vars) == 1:
-                        terms.append(term_vars[0])
-                    elif len(term_vars) > 1:
-                        terms.append('&'.join(term_vars))
-                    else:
-                        terms.append('1')
+        for i, var in enumerate(variables):
 
-        return terms
+            bit = 1 << (n - 1 - i)
+            if mask & bit:
+                parts.append(var)
+
+        if not parts:
+            return "1"
+        if len(parts) == 1:
+            return parts[0]
+        return '&'.join(parts)
