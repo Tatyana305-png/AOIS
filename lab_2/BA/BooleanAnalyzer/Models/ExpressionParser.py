@@ -36,7 +36,6 @@ class BooleanExpressionParser(IExpressionParser):
         """Вычисление значения выражения"""
         expr = expression.replace(' ', '')
 
-        # Если это константа
         if expr == '0':
             return 0
         if expr == '1':
@@ -63,10 +62,10 @@ class BooleanExpressionParser(IExpressionParser):
         if expr in ['0', '1']:
             return True
 
-        if expr[-1] in '&|!-~':
+        if expr and expr[-1] in '&|!-~':
             return False
 
-        if expr[0] in '&|~':
+        if expr and expr[0] in '&|~':
             return False
 
         i = 0
@@ -100,9 +99,10 @@ class BooleanExpressionParser(IExpressionParser):
         return balance == 0
 
     def _preprocess_expression(self, expr: str) -> str:
-        """Предобработка выражения для eval"""
-        # Сначала обрабатываем составные операторы
-        expr = expr.replace('->', ') <= (')
+        """Предобработка выражения"""
+
+        expr = self._process_implication(expr)
+
         expr = expr.replace('~', ' == ')
 
         if '!=' in expr:
@@ -112,16 +112,25 @@ class BooleanExpressionParser(IExpressionParser):
                 right = parts[1].strip()
                 expr = f'(({left} and not {right}) or (not {left} and {right}))'
 
-        # Потом простые операторы
         expr = expr.replace('!', ' not ')
         expr = expr.replace('&', ' and ')
         expr = expr.replace('|', ' or ')
 
-        if '<=' in expr:
-            parts = expr.split(') <= (')
-            if len(parts) == 2:
-                left = parts[0] + ')'
-                right = '(' + parts[1]
-                expr = f'(not {left} or {right})'
+        return expr
+
+    def _process_implication(self, expr: str) -> str:
+        """Рекурсивная обработка импликации"""
+        depth = 0
+        for i in range(len(expr)):
+            if expr[i] == '(':
+                depth += 1
+            elif expr[i] == ')':
+                depth -= 1
+            elif depth == 0 and i + 1 < len(expr) and expr[i] == '-' and expr[i + 1] == '>':
+                left = expr[:i].strip()
+                right = expr[i + 2:].strip()
+                left = self._process_implication(left)
+                right = self._process_implication(right)
+                return f'(not ({left}) or ({right}))'
 
         return expr
