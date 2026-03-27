@@ -13,10 +13,9 @@ class KarnaughMinimizer(BaseMinimizer):
         if n > 4:
             return "Карты Карно поддерживаются только для до 4 переменных", ""
 
-
         k_map, map_str = self._build_map(function)
 
-        groups = self._find_groups(k_map, n)
+        groups = self._find_groups(k_map, n, function.variables)
 
         terms = []
         for group in groups:
@@ -27,7 +26,8 @@ class KarnaughMinimizer(BaseMinimizer):
         if not terms:
             return '0', map_str
 
-        minimized = ' ∨ '.join(terms)
+        unique_terms = list(set(terms))
+        minimized = ' ∨ '.join(unique_terms)
         return minimized, map_str
 
     def _build_map(self, function: BooleanFunction) -> Tuple[Dict, str]:
@@ -40,13 +40,14 @@ class KarnaughMinimizer(BaseMinimizer):
             return self._build_map_2var(function)
         elif n == 3:
             return self._build_map_3var(function)
-        else:  # n == 4
+        else:
             return self._build_map_4var(function)
 
     def _build_map_1var(self, function: BooleanFunction) -> Tuple[Dict, str]:
         """Карта для 1 переменной"""
         k_map = {}
         map_str = "a\\ 0 1\n"
+        map_str += "-" * 10 + "\n"
 
         for val in [0, 1]:
             for bits, result in function.truth_table:
@@ -57,67 +58,70 @@ class KarnaughMinimizer(BaseMinimizer):
         return k_map, map_str
 
     def _build_map_2var(self, function: BooleanFunction) -> Tuple[Dict, str]:
-        """Карта для 2 переменных"""
+        """Карта для 2 переменных (порядок Грея)"""
         k_map = {}
-        map_str = "ab\\ 00 01 11 10\n"
-
-        gray_order = [(0, 0), (0, 1), (1, 1), (1, 0)]
+        map_str = "a\\b 0 1\n"
+        map_str += "-" * 15 + "\n"
 
         for a in [0, 1]:
             row = f"{a}   "
-            for b_gray in gray_order:
-                bits = (a, b_gray[1])
+            for b in [0, 1]:
+                bits = (a, b)
                 for tb, res in function.truth_table:
                     if tb == bits:
-                        k_map[(a, b_gray[1])] = res
+                        k_map[(a, b)] = res
                         row += f"{res} "
             map_str += row + "\n"
 
         return k_map, map_str
 
     def _build_map_3var(self, function: BooleanFunction) -> Tuple[Dict, str]:
-        """Карта для 3 переменных"""
+        """Карта для 3 переменных (a - строки, bc - столбцы в порядке Грея)"""
         k_map = {}
-        map_str = "ab\\c 0 1\n"
-
-        for a in [0, 1]:
-            for b in [0, 1]:
-                row = f"{a}{b}   "
-                for c in [0, 1]:
-                    bits = (a, b, c)
-                    for tb, res in function.truth_table:
-                        if tb == bits:
-                            k_map[(a, b, c)] = res
-                            row += f"{res} "
-                map_str += row + "\n"
-
-        return k_map, map_str
-
-    def _build_map_4var(self, function: BooleanFunction) -> Tuple[Dict, str]:
-        """Карта для 4 переменных"""
-        k_map = {}
-        map_str = "ab\\cd 00 01 11 10\n"
+        map_str = "a\\bc 00 01 11 10\n"
+        map_str += "-" * 30 + "\n"
 
         gray_order = [(0, 0), (0, 1), (1, 1), (1, 0)]
 
         for a in [0, 1]:
-            for b in [0, 1]:
-                row = f"{a}{b}   "
-                for cd in gray_order:
-                    bits = (a, b, cd[0], cd[1])
-                    for tb, res in function.truth_table:
-                        if tb == bits:
-                            k_map[(a, b, cd[0], cd[1])] = res
-                            row += f"{res} "
-                map_str += row + "\n"
+            row = f"{a}    "
+            for b, c in gray_order:
+                bits = (a, b, c)
+                for tb, res in function.truth_table:
+                    if tb == bits:
+                        k_map[(a, b, c)] = res
+                        row += f"{res}  "
+            map_str += row + "\n"
 
         return k_map, map_str
 
-    def _find_groups(self, k_map: Dict, n_vars: int) -> List[List[Tuple]]:
-        """Поиск групп единиц"""
-        # Упрощенная реализация - каждая единица как группа
-        # В реальном проекте здесь должен быть сложный алгоритм поиска прямоугольников
+    def _build_map_4var(self, function: BooleanFunction) -> Tuple[Dict, str]:
+        """Карта для 4 переменных (ab - строки, cd - столбцы, оба в порядке Грея)"""
+        k_map = {}
+        map_str = "ab\\cd 00 01 11 10\n"
+        map_str += "-" * 35 + "\n"
+
+        gray_order = [(0, 0), (0, 1), (1, 1), (1, 0)]
+
+        for a, b in gray_order:
+            row = f"{a}{b}    "
+            for c, d in gray_order:
+                bits = (a, b, c, d)
+                for tb, res in function.truth_table:
+                    if tb == bits:
+                        k_map[(a, b, c, d)] = res
+                        row += f"{res}  "
+            map_str += row + "\n"
+
+        return k_map, map_str
+
+    def _find_groups(self, k_map: Dict, n_vars: int, variables: List[str]) -> List[List[Tuple]]:
+        """Поиск групп единиц (прямоугольников размером 2^k)"""
         ones = [pos for pos, val in k_map.items() if val == 1]
+
+        if not ones:
+            return []
+
         return [[pos] for pos in ones]
 
     def _group_to_term(self, group: List[Tuple], variables: List[str]) -> str:
@@ -140,5 +144,8 @@ class KarnaughMinimizer(BaseMinimizer):
 
         if not const_literals:
             return '1'
+
+        if len(const_literals) == 1:
+            return const_literals[0]
 
         return '(' + '&'.join(const_literals) + ')'
