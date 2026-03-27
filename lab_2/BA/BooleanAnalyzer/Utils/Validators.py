@@ -14,18 +14,14 @@ class ExpressionValidator:
         if not expression:
             return False
 
-        # Удаляем пробелы
         expr = expression.replace(' ', '')
 
-        # Проверка символов
         if not cls._check_characters(expr):
             return False
 
-        # Проверка скобок
         if not cls._check_parentheses(expr):
             return False
 
-        # Проверка операторов
         if not cls._check_operators(expr):
             return False
 
@@ -44,9 +40,8 @@ class ExpressionValidator:
             elif char not in cls.VALID_OPERATORS and not char.isdigit():
                 return False
 
-            # Проверка составных операторов
             if char == '-' and i + 1 < len(expr) and expr[i + 1] == '>':
-                i += 1  # пропускаем '>'
+                i += 1
 
             i += 1
 
@@ -68,7 +63,6 @@ class ExpressionValidator:
     @classmethod
     def _check_operators(cls, expr: str) -> bool:
         """Проверка корректности использования операторов"""
-        # Упрощенная проверка - можно расширить
         if expr.startswith(('&', '|', '~', '->')):
             return False
         if expr.endswith(('&', '|', '!', '-', '~')):
