@@ -6,22 +6,17 @@ class FictitiousVariableFinder:
     """Поиск фиктивных переменных"""
 
     def find(self, function: BooleanFunction) -> List[str]:
-        """Поиск фиктивных переменных"""
+        """Поиск фиктивных переменных среди переменных, присутствующих в функции"""
         if len(function.variables) <= 1:
             return []
 
         fictitious = []
-        all_vars = set(['a', 'b', 'c', 'd', 'e'])
-        present_vars = set(function.variables)
-
-        for var in all_vars - present_vars:
-            fictitious.append(var)
 
         for idx, var in enumerate(function.variables):
             if self._is_fictitious(function, idx):
                 fictitious.append(var)
 
-        return sorted(fictitious)
+        return fictitious
 
     def _is_fictitious(self, function: BooleanFunction, var_index: int) -> bool:
         """Проверка, является ли переменная фиктивной"""
@@ -32,6 +27,7 @@ class FictitiousVariableFinder:
 
             try:
                 opposite_result = function.truth_table.get_value_at(opposite_bits)
+                # Если результат меняется, переменная не фиктивная
                 if result != opposite_result:
                     return False
             except ValueError:
