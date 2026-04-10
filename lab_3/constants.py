@@ -1,0 +1,8 @@
+BITS_IN_3BIT_COUNTER = 3
+BITS_IN_TETRAD = 4
+COUNTER_MAX_VALUE = 7
+
+BCD_OFFSET = 2
+
+LOG_LEVEL_INFO = "[INFO] "
+DELIMITER = "--------------------------------"
